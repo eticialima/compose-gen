@@ -1,7 +1,10 @@
+import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import express from 'express';
 import { stringify } from 'yaml';
 import { z } from 'zod';
+
+const prisma = new PrismaClient();
 
 const generateComposeSchema = z
   .object({
@@ -28,7 +31,12 @@ const generateComposeSchema = z
     }
   });
 
+const saveStackSchema = generateComposeSchema.extend({
+  name: z.string().trim().min(2).max(80)
+});
+
 type GenerateComposeRequest = z.infer<typeof generateComposeSchema>;
+type SaveStackRequest = z.infer<typeof saveStackSchema>;
 
 type ComposeService = {
   image?: string;
@@ -46,6 +54,12 @@ type ComposeDocument = {
   services: Record<string, ComposeService>;
   volumes?: Record<string, null>;
   networks: Record<string, { driver: string }>;
+};
+
+type GeneratedCompose = {
+  composeYaml: string;
+  envExample: string;
+  warnings: string[];
 };
 
 const networkName = 'app_network';
@@ -168,7 +182,7 @@ function createEnvExample(values: Record<string, string>): string {
     .join('\n');
 }
 
-function generateCompose(request: GenerateComposeRequest) {
+function generateCompose(request: GenerateComposeRequest): GeneratedCompose {
   const database = createDatabaseService(request.database);
   const services: ComposeDocument['services'] = {
     app: createBackendService(request),
@@ -233,27 +247,84 @@ function generateCompose(request: GenerateComposeRequest) {
   };
 }
 
+function parseOr400<T>(schema: z.ZodType<T>, payload: unknown, response: express.Response): T | null {
+  const parsed = schema.safeParse(payload);
+
+  if (!parsed.success) {
+    response.status(400).json({
+      message: 'Configuracao invalida.',
+      issues: parsed.error.issues
+    });
+    return null;
+  }
+
+  return parsed.data;
+}
+
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 
 app.use(cors({ origin: ['http://localhost:4200'] }));
 app.use(express.json());
 
-app.get('/health', (_request, response) => {
-  response.json({ status: 'ok' });
+app.get('/health', async (_request, response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    response.json({ status: 'ok', database: 'connected' });
+  } catch {
+    response.json({ status: 'ok', database: 'disconnected' });
+  }
+});
+
+app.get('/stacks', async (_request, response) => {
+  try {
+    const stacks = await prisma.savedStack.findMany({
+      orderBy: { updatedAt: 'desc' }
+    });
+    response.json(stacks);
+  } catch {
+    response.status(503).json({ message: 'Banco indisponivel para listar stacks.' });
+  }
 });
 
 app.post('/generate', (request, response) => {
-  const parsed = generateComposeSchema.safeParse(request.body);
-
-  if (!parsed.success) {
-    return response.status(400).json({
-      message: 'Configuracao invalida.',
-      issues: parsed.error.issues
-    });
+  const parsed = parseOr400(generateComposeSchema, request.body, response);
+  if (!parsed) {
+    return;
   }
 
-  return response.json(generateCompose(parsed.data));
+  response.json(generateCompose(parsed));
+});
+
+app.post('/stacks', async (request, response) => {
+  const parsed = parseOr400(saveStackSchema, request.body, response);
+  if (!parsed) {
+    return;
+  }
+
+  const generated = generateCompose(parsed);
+
+  try {
+    const stack = await prisma.savedStack.create({
+      data: {
+        name: parsed.name,
+        backend: parsed.backend,
+        database: parsed.database,
+        cache: parsed.cache,
+        adminTools: parsed.adminTools,
+        composeYaml: generated.composeYaml,
+        envExample: generated.envExample,
+        warnings: generated.warnings
+      }
+    });
+
+    response.status(201).json({
+      stack,
+      generated
+    });
+  } catch {
+    response.status(503).json({ message: 'Banco indisponivel para salvar stack.' });
+  }
 });
 
 app.listen(port, () => {

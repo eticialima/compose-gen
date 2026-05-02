@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: compose_generator
+      POSTGRES_USER: compose
+      POSTGRES_PASSWORD: compose
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app-server:
+    build:
+      context: ./app-server
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://compose:compose@postgres:5432/compose_generator?schema=public
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
