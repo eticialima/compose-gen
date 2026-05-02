@@ -1,5 +1,7 @@
 # compose-gen
 
+![compose preview](doc/compose_1.png)
+
 Gerador simples de `docker-compose` com:
 
 - `app-client/compose-gen`: Angular

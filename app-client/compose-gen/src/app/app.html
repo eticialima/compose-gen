@@ -1,10 +1,3 @@
-<mat-toolbar class="topbar">
-  <span class="brand-mark">DC</span>
-  <span class="brand-title">Compose Generator</span>
-  <span class="toolbar-spacer"></span>
-  <button mat-stroked-button type="button" (click)="generate()">Gerar</button>
-</mat-toolbar>
-
 <main class="shell">
   <section class="intro">
     <div>
@@ -18,14 +11,32 @@
     </mat-chip-set>
   </section>
 
+<main class="shell">
   <section class="workspace" [formGroup]="form">
     <mat-card class="config-card" appearance="outlined">
+      @if (isLoading() || isSaving()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
       <mat-card-header>
         <mat-card-title>Stack</mat-card-title>
         <mat-card-subtitle>Servicos principais</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
+        <div class="field-group">
+          <h2>Nome</h2>
+          <div class="name-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nome da stack</mat-label>
+              <input matInput formControlName="stackName" placeholder="Ex: Node + Postgres base" />
+            </mat-form-field>
+            <button mat-flat-button type="button" (click)="saveStack()" [disabled]="isSaving()">Salvar stack</button>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
         <div class="field-group">
           <h2>Backend</h2>
           <mat-button-toggle-group formControlName="backend" class="toggle-group">
@@ -116,6 +127,37 @@
           </mat-tab-group>
         } @else {
           <div class="empty-state">Aguardando API em localhost:3000.</div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <section class="saved-section">
+    <mat-card appearance="outlined">
+      @if (isLoadingStacks()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
+      <mat-card-header>
+        <mat-card-title>Stacks salvas</mat-card-title>
+        <mat-card-subtitle>Presets persistidos no PostgreSQL com Prisma</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (savedStacks().length) {
+          <mat-list>
+            @for (stack of savedStacks(); track stack.id) {
+              <mat-list-item class="saved-item">
+                <div matListItemTitle>{{ stack.name }}</div>
+                <div matListItemLine>{{ stack.backend }} + {{ stack.database }} @if (stack.cache) { + {{ stack.cache }} }</div>
+                <div matListItemMeta>
+                  <button mat-button type="button" (click)="applyStack(stack)">Aplicar</button>
+                </div>
+              </mat-list-item>
+            }
+          </mat-list>
+        } @else {
+          <div class="empty-state">Nenhuma stack salva ainda.</div>
         }
       </mat-card-content>
     </mat-card>
