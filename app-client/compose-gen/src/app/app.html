@@ -1,0 +1,123 @@
+<mat-toolbar class="topbar">
+  <span class="brand-mark">DC</span>
+  <span class="brand-title">Compose Generator</span>
+  <span class="toolbar-spacer"></span>
+  <button mat-stroked-button type="button" (click)="generate()">Gerar</button>
+</mat-toolbar>
+
+<main class="shell">
+  <section class="intro">
+    <div>
+      <h1>Gerador de docker-compose</h1>
+      <p>Escolha uma stack e gere um compose.yaml com .env.example.</p>
+    </div>
+    <mat-chip-set aria-label="Stack status">
+      <mat-chip>Express API</mat-chip>
+      <mat-chip>Angular Material</mat-chip>
+      <mat-chip>YAML + Zod</mat-chip>
+    </mat-chip-set>
+  </section>
+
+  <section class="workspace" [formGroup]="form">
+    <mat-card class="config-card" appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>Stack</mat-card-title>
+        <mat-card-subtitle>Servicos principais</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="field-group">
+          <h2>Backend</h2>
+          <mat-button-toggle-group formControlName="backend" class="toggle-group">
+            @for (backend of backends; track backend.id) {
+              <mat-button-toggle [value]="backend.id">{{ backend.title }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+          <mat-list dense>
+            @for (backend of backends; track backend.id) {
+              <mat-list-item>
+                <span matListItemTitle>{{ backend.title }}</span>
+                <span matListItemLine>{{ backend.description }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="field-group">
+          <h2>Banco</h2>
+          <mat-button-toggle-group formControlName="database" class="toggle-group database-group">
+            @for (database of databases; track database.id) {
+              <mat-button-toggle [value]="database.id">{{ database.title }}</mat-button-toggle>
+            }
+          </mat-button-toggle-group>
+          <mat-list dense>
+            @for (database of databases; track database.id) {
+              <mat-list-item>
+                <span matListItemTitle>{{ database.title }}</span>
+                <span matListItemLine>{{ database.description }}</span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="field-group">
+          <h2>Extras</h2>
+          <div class="check-list">
+            <mat-checkbox formControlName="redis">Redis cache</mat-checkbox>
+            <mat-checkbox formControlName="adminer" [disabled]="!canUseAdminer()">Adminer</mat-checkbox>
+            <mat-checkbox formControlName="pgadmin" [disabled]="!canUsePgAdmin()">pgAdmin</mat-checkbox>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="preview-card" appearance="outlined">
+      @if (isLoading()) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
+      <mat-card-header>
+        <mat-card-title>Preview</mat-card-title>
+        <mat-card-subtitle>Arquivos gerados</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (errorMessage()) {
+          <div class="message error">{{ errorMessage() }}</div>
+        }
+
+        @if (response(); as generated) {
+          @if (generated.warnings.length) {
+            <div class="warnings">
+              @for (warning of generated.warnings; track warning) {
+                <p>{{ warning }}</p>
+              }
+            </div>
+          }
+
+          <mat-tab-group animationDuration="160ms">
+            <mat-tab label="compose.yaml">
+              <div class="tab-actions">
+                <button mat-flat-button type="button" (click)="copy(generated.composeYaml, 'compose.yaml')">Copiar YAML</button>
+              </div>
+              <pre>{{ generated.composeYaml }}</pre>
+            </mat-tab>
+
+            <mat-tab label=".env.example">
+              <div class="tab-actions">
+                <button mat-flat-button type="button" (click)="copy(generated.envExample, '.env.example')">Copiar ENV</button>
+              </div>
+              <pre>{{ generated.envExample }}</pre>
+            </mat-tab>
+          </mat-tab-group>
+        } @else {
+          <div class="empty-state">Aguardando API em localhost:3000.</div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>
