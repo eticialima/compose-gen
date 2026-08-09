@@ -1,27 +1,27 @@
-# compose-gen
+# Compose Generator Simple 
+
+A simple `docker-compose` generator with:
 
 ![compose preview](doc/compose_1.png)
 
-Gerador simples de `docker-compose` com:
-
 - `app-client/compose-gen`: Angular
 - `app-server`: Express + Zod + YAML + Prisma
-- PostgreSQL para salvar presets de stack
+- PostgreSQL for storing stack presets
 
-## Subir backend com Docker
+## Run the backend with Docker
 
 ```bash
 docker compose up -d --build
-```
+````
 
-## Endpoints do app-server
+## app-server Endpoints
 
-- `GET /health`
-- `POST /generate`
-- `GET /stacks`
-- `POST /stacks`
+* `GET /health`
+* `POST /generate`
+* `GET /stacks`
+* `POST /stacks`
 
-## Exemplo de stack salva
+## Example of a saved stack
 
 ```json
 {
